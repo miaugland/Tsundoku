@@ -15,9 +15,11 @@ const RATING_LABELS: Record<number, string> = {
 export default function RatingWidget({
     bookId,
     initialRating,
+    initialTags,
 }: {
-    bookId: string,
+    bookId: string;
     initialRating?: number;
+    initialTags?: string[];
 }) {
     const router = useRouter();
     const [rating, setRating] = useState(initialRating ?? 0);
@@ -42,6 +44,7 @@ export default function RatingWidget({
                     bookId,
                     rating: newRating,
                     content: "",
+                    tags: initialTags ?? [],
                 }),
             });
             if (!res.ok) throw new Error();

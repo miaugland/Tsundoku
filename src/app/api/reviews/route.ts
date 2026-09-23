@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { REVIEW_TAGS } from "@/lib/reviewTag";
 
 export async function GET(request: NextRequest) {
   const bookId = request.nextUrl.searchParams.get("bookId");
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { bookId, rating, content } = await request.json();
+  const { bookId, rating, content, tags } = await request.json();
 
   if (!bookId || typeof rating !== "number" || rating < 1 || rating > 10) {
     return NextResponse.json(
@@ -41,10 +42,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const safeTag: string[] = Array.isArray(tags)
+    ? tags.filter(
+      (tag): tag is string =>
+        typeof tag == "string" && (REVIEW_TAGS as readonly string[]).includes(tag)
+    )
+    : [];
+
   const review = await prisma.review.upsert({
     where: { userId_bookId: { userId: session.user.id, bookId } },
-    update: { rating, content: content ?? null },
-    create: { userId: session.user.id, bookId, rating, content: content ?? null },
+    update: { rating, content: content ?? null, tags: safeTag },
+    create: { userId: session.user.id, bookId, rating, content: content ?? null, tags: safeTag },
   });
 
   revalidatePath(`/book/${bookId}`);
