@@ -3,21 +3,29 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import StarRatingInput from "./StarRatingInput";
+import { REVIEW_TAGS } from "@/lib/reviewTag";
 
 export default function ReviewForm({
   bookId,
   initialRating,
   initialContent,
+  initialTags,
 }: {
   bookId: string;
   initialRating?: number;
   initialContent?: string | null;
+  initialTags?: string[]
 }) {
   const router = useRouter();
   const [rating, setRating] = useState(initialRating ?? 5);
   const [content, setContent] = useState(initialContent ?? "");
+  const [tags, setTags] = useState<string[]>(initialTags ?? [])
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
+
+  function toggleTag(tag: string) {
+    setTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,7 +36,7 @@ export default function ReviewForm({
       const res = await fetch("/api/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookId, rating, content }),
+        body: JSON.stringify({ bookId, rating, content, tags }),
       });
       if (!res.ok) {
         throw new Error();
@@ -50,6 +58,24 @@ export default function ReviewForm({
       <div className="font-display text-[17px] text-ink">Your review</div>
 
       <StarRatingInput value={rating / 2} onChange={(v) => setRating(v * 2)} disabled={saving} />
+
+      <div className="flex flex-wrap gap-1.5">
+        {REVIEW_TAGS.map((tag) => {
+          const active = tags.includes(tag);
+          return (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => toggleTag(tag)}
+              disabled={saving}
+              className={`rounded-full px-3 py-1.5 text-[12.5px] transition-colors disabled:opacity-50 ${active ? "bg-accent text-white" : "bg-[#fbeef1] text-[#6b545a] hover:bg-[#f6dfe4]"
+                }`}
+            >
+              {tag}
+            </button>
+          );
+        })}
+      </div>
 
       <textarea
         id="review-textarea"

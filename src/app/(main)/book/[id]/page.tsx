@@ -17,6 +17,40 @@ function formatReviewDate(date: Date) {
   return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long" }).format(date);
 }
 
+function buildRatingBuckets(reviews: { rating: number }[]) {
+  const counts = [0, 0, 0, 0, 0];
+  for (const review of reviews) {
+    const stars = Math.min(5, Math.max(1, Math.round(review.rating / 2)));
+    counts[stars - 1]++;
+  }
+
+  const total = reviews.length;
+
+  return [5, 4, 3, 2, 1].map((stars) => {
+    const count = counts[stars - 1];
+    return {
+      stars,
+      count,
+      pct: total > 0 ? Math.round((count / total) * 100) : 0,
+    };
+  });
+}
+
+function buildTopTags(reviews: { tags: string[] }[], limit = 4) {
+  const counts = new Map<string, number>();
+
+  for (const review of reviews) {
+    for (const tag of review.tags ?? []) {
+      counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    }
+  }
+
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([tag, count]) => ({ tag, count }))
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -84,6 +118,9 @@ export default async function BookPage({
       : null;
 
   const averageRatingOutOfFive = averageRating ? averageRating / 2 : null
+
+  const ratingBuckets = buildRatingBuckets(reviews);
+  const topTags = buildTopTags(reviews);
 
   return (
     <main className="min-h-screen py-10">
@@ -209,7 +246,7 @@ export default async function BookPage({
               <RatingWidget
                 bookId={book.id}
                 initialRating={myReview?.rating}
-                initialContent={myReview?.content}
+                initialTags={myReview?.tags}
               />
             </div>
           )}
@@ -237,12 +274,51 @@ export default async function BookPage({
       <div className="mx-auto max-w-270 px-7 mt-8">
         <h2 className="text-lg font-semibold">Reviews</h2>
 
+        {reviews.length > 0 && (
+          <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-6.5 rounded-[26px] bg-white p-5.5 shadow-[0_16px_36px_-30px_rgba(59,43,46,0.5)]">
+            <div className="flex flex-col gap-2">
+              {ratingBuckets.map(({ stars, pct }) => (
+                <div key={stars} className="flex items-center gap-2.5 text-[13px] text-muted">
+                  <span className="w-3.5 text-right text-[#584449]">{stars}</span>
+                  <span className="text-[11px] text-[#c9aeb4]">★</span>
+                  <span className="h-2.25 flex-1 overflow-hidden rounded-full bg-[#f6eff0]">
+                    <span
+                      className="block h-full rounded-full bg-accent"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </span>
+                  <span className="w-8.5 text-right">{pct}%</span>
+                </div>
+              ))}
+            </div>
+
+            {topTags.length > 0 && (
+              <div className="flex flex-col gap-2.5">
+                <div className="text-[11px] uppercase tracking-[0.12em] text-muted-2">
+                  Readers keep saying
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {topTags.map(({ tag, count }) => (
+                    <span
+                      key={tag}
+                      className="rounded-full bg-[#fbeef1] px-3 py-1.5 text-[12.5px] text-[#584449]"
+                    >
+                      {tag} · {count}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Form is pre-filled + says "Update review" if you already reviewed this book */}
         {session?.user ? (
           <ReviewForm
             bookId={book.id}
             initialRating={myReview?.rating}
             initialContent={myReview?.content}
+            initialTags={myReview?.tags}
           />
         ) : (
           <p className="mt-2 text-sm text-black/60 dark:text-white/60">

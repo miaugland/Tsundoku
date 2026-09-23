@@ -170,6 +170,7 @@ model Review {
   bookId    String
   rating    Int // f.eks. 1-10 for finere granularitet enn Goodreads sine 1-5 stjerner
   content   String?
+  tags      String[] @default([])
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
